@@ -1,8 +1,5 @@
 # =============================================================================
-# Backtesting strategy - II : Intraday resistance breakout strategy
-# Author : Mayank Rasu
 
-# Please report bug/issues in the Q&A section
 # =============================================================================
 
 import numpy as np
