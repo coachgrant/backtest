@@ -1,0 +1,112 @@
+
+
+import vectorbt as vbt
+import datetime
+import numpy as np
+import pandas as pd
+import datetime 
+import vectorbt as vbt
+import talib
+
+
+# Load data
+prices = pd.read_csv("oanda_data_H1.csv")
+# Convert 'time' column to datetime and set as index
+prices["Date"] = pd.to_datetime(prices["Date"])
+prices.set_index("Date", inplace=True)
+#prices = prices[prices.index.to_series().dt.dayofweek.isin([
+# 1, 2, 3, 4])]
+#prices = prices[prices.index.to_series().dt.dayofweek < 5]
+#prices = prices[prices.index.hour < 9] 
+#prices = prices[(prices.index.hour >= 0) & (prices.index.hour < 9) ]
+close_prices = prices['Close']
+#print(close_prices)
+#print(close_prices.to_string())
+#print(type(close_prices))
+
+
+rsi_vals = vbt.IndicatorFactory.from_talib("RSI")  
+rsi = rsi_vals.run(close_prices, timeperiod=14).real
+# Print RSI
+#print(rsi)
+rsi[:100] = np.nan
+#print(rsi.to_string())
+
+
+"""
+rsi = talib.RSI(close_prices, timeperiod=14)
+print(rsi)
+# Print RSI values
+#print(rsi.to_string())
+"""
+
+
+entries = rsi.vbt.crossed_below(50)
+#print(entries.to_string())
+#exits = rsi.vbt.crossed_above(55)
+#print(exits.to_string())
+
+#entries2 = rsi.vbt.crossed_below(40)
+#print(entries.to_string())
+exits = rsi.vbt.crossed_above(70)
+#print(exits.to_string())
+
+#entries[:100] = False
+#exits[:100] = False
+
+
+# Filter by weekday (Mon=0, ..., Fri=4)
+day_mask = prices.index.dayofweek.isin([1, 2, 3])  # Tues–Thurs
+
+# Filter by hour (e.g., only 0h–8h)
+hour_mask = (prices.index.hour >= 0) & (prices.index.hour <= 7)
+
+
+# Combine both masks
+time_mask = day_mask & hour_mask
+
+# Apply mask to entries and exitsil
+entries = entries & time_mask
+exits = exits & time_mask
+
+exits = exits.copy()
+
+# Force an exit on the last timestamp to close any open trades
+exits.iloc[-1] = True
+#print(exits.to_string())
+#print(entries.to_string())
+
+# Define stop loss and take profit in pips (1 pip = 0.01 for EUR/JPY)
+stop_loss_pips = 20
+take_profit_pips = 40
+
+# Convert pips to price movement for sl_stop and tp_stop
+sl_stop = stop_loss_pips * 0.01  # Convert 20 pips to 0.20
+tp_stop = take_profit_pips * 0.01  # Convert 40 pips to 0.40
+
+# Create a portfolio with stop loss and take profit
+pf = vbt.Portfolio.from_signals(
+    close_prices,
+    entries=entries,
+    exits=exits,
+    sl_stop=sl_stop,
+    tp_stop=tp_stop,
+    init_cash=10000,
+    freq='1h',
+  )
+
+
+
+print(pf.stats())
+print(pf.total_return())
+#print(pf.trades.records[['entry_price', 'exit_price']])
+#print(pf.trades.records[['entry_price', 'exit_price', 'pnl']].head())
+#print(pf.trades.records)
+
+
+
+
+
+
+
+
